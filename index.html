@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>To-Do List</title>
+  </head>
+  <body>
+    <h1>To-Do List</h1>
+
+    <form>
+      <label for="name">Task Name:</label>
+      <input type="text" id="name" name="name" required><br>
+
+      <label for="priority">Priority (1-9):</label>
+      <input type="number" id="priority" name="priority" min="1" max="9" required><br>
+
+      <button type="submit">Add Task</button>
+    </form>
+
+    <h2>Tasks:</h2>
+    <ul id="task-list"></ul>
+
+    <h2>Report:</h2>
+    <ul id="report-list"></ul>
+
+    <script>
+      // Helper function to update the task list
+      const updateTaskList = async () => {
+        const response = await fetch('/tasks');
+        const tasks = await response.json();
+
+        const taskList = document.getElementById('task-list');
+        taskList.innerHTML = '';
+
+        tasks.forEach((task) => {
+          const item = document.createElement('li');
+          item.textContent = `${task.name} (${task.priority})`;
+
+          if (task.status === 'completed') {
+            const span = document.createElement('span');
+            span.textContent = '✓';
+            item.appendChild(span);
+          } else if (task.status === 'canceled') {
+            const span = document.createElement('span');
+            span.textContent = '✗';
+            item.appendChild(span);
+          }
+
+          const completeButton = document.createElement('button');
+          completeButton.textContent = '✓';
+          completeButton.addEventListener('click', async () => {
+            await fetch(`/tasks/${task._id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                status: 'completed',
+              }),
+            });
+            updateTaskList();
+            updateReport();
+          });
+          item.appendChild(completeButton);
+
+          const cancelButton = document.createElement('button');
+          cancelButton.textContent = '✗';
+          cancelButton.addEventListener('click', async () => {
+            await fetch(`/tasks/${task._id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                status: 'canceled',
+              }),
+            });
+            updateTaskList();
+            updateReport();
+          });
+          item.appendChild(cancelButton);
+
+          const deleteButton = document.createElement('button');
+          deleteButton.textContent = '🗑';
+          deleteButton.addEventListener('click', async () => {
+            await fetch(`/tasks/${task._id}`, {
+              method: 'DELETE',
+            });
+            updateTaskList();
+            updateReport();
+          });
+          item.appendChild(deleteButton);
+
+          taskList.appendChild(item);
+        });
+      };
+
+      // Helper function to update the report
+      const updateReport = async () => {
+        const response = await fetch('/tasks');
+        const tasks = await response.json();
+
+        const reportList = document.getElementById('report-list');
+        reportList.innerHTML = '';
+
+        const pendingTasks = tasks.filter((task) => task.status === 'pending').length;
+const pendingItem = document.createElement('li');
+pendingItem.textContent = `Pending tasks: ${pendingTasks}`;
+reportList.appendChild(pendingItem);
+    canceledTasks = tasks.filter((task) => task.status === 'canceled').length;
+    const canceledItem = document.createElement('li');
+    canceledItem.textContent = `Canceled tasks: ${canceledTasks}`;
+    reportList.appendChild(canceledItem);
+
+    deletedTasks = tasks.filter((task) => task.status === 'deleted').length;
+    const deletedItem = document.createElement('li');
+    deletedItem.textContent = `Deleted tasks: ${deletedTasks}`;
+    reportList.appendChild(deletedItem);
+
+    completedTasks = tasks.filter((task) => task.status === 'completed').length;
+    const completedItem = document.createElement('li');
+    completedItem.textContent = `Completed tasks: ${completedTasks}`;
+    reportList.appendChild(completedItem);
+
+    const sortedTasks = tasks.sort((a, b) => {
+      if (a.status < b.status) {
+        return -1;
+      } else if (a.status > b.status) {
+        return 1;
+      } else {
+        return 0;
+      }
+    });
+
+    const sortedTaskList = document.createElement('ul');
+    sortedTasks.forEach((task) => {
+      const item = document.createElement('li');
+      item.textContent = `${task.name} (${task.priority}) - ${task.status}`;
+      sortedTaskList.appendChild(item);
+    });
+    reportList.appendChild(sortedTaskList);
+  };
+
+  // Add event listener to the form to create new task
+  const form = document.querySelector('form');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const name = document.getElementById('name').value;
+    const priority = document.getElementById('priority').value;
+
+    await fetch('/tasks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        priority,
+      }),
+    });
+
+    form.reset();
+    updateTaskList();
+    updateReport();
+  });
+
+  // Initial update of the task list and report
+  updateTaskList();
+  updateReport();
+</script>
+</body>
+</html>
